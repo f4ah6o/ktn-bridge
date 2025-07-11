@@ -11,45 +11,58 @@ export interface DebugOptions {
   outputFile?: string;
 }
 
+export type CodeLocation = {
+  line: number;
+  column: number;
+};
+
+export type SourceMapping = {
+  original: CodeLocation;
+  transformed: CodeLocation;
+  name?: string;
+};
+
 export interface TransformTrace {
   originalCode: string;
   transformedCode: string;
   sourceMap?: string;
-  mappings?: Array<{
-    original: { line: number; column: number };
-    transformed: { line: number; column: number };
-    name?: string;
-  }>;
+  mappings?: SourceMapping[];
   timestamp: string;
   filename: string;
   transformDuration: number;
   transformedAt: string;
 }
 
+export type EventMapping = {
+  webEvent: string;
+  kintoneEvent: string;
+  location: CodeLocation;
+  success: boolean;
+  error?: string;
+};
+
+export type ApiMapping = {
+  webUrl: string;
+  kintoneApi: string;
+  method: string;
+  location?: CodeLocation;
+  success: boolean;
+  error?: string;
+};
+
+export type DebugError = {
+  message: string;
+  location: CodeLocation;
+  severity: 'error' | 'warning' | 'info';
+  code: string;
+  suggestions?: string[];
+};
+
 export interface DebugInfo {
-  eventMappings: Array<{
-    webEvent: string;
-    kintoneEvent: string;
-    location: { line: number; column: number };
-    success: boolean;
-    error?: string;
-  }>;
-  apiMappings: Array<{
-    webUrl: string;
-    kintoneApi: string;
-    method: string;
-    location?: { line: number; column: number };
-    success: boolean;
-    error?: string;
-  }>;
+  eventMappings: EventMapping[];
+  apiMappings: ApiMapping[];
   transformTrace?: TransformTrace;
-  errors: Array<{
-    message: string;
-    location: { line: number; column: number };
-    severity: 'error' | 'warning' | 'info';
-    code: string;
-    suggestions?: string[];
-  }>;
+  errors: DebugError[];
 }
 
 export class DebugHelper {
@@ -365,6 +378,40 @@ export class DebugHelper {
   /**
    * 統計情報を取得
    */
+  private getEventMappingStats(eventMappings: EventMapping[]) {
+    return {
+      total: eventMappings.length,
+      successful: eventMappings.filter(m => m.success).length,
+      failed: eventMappings.filter(m => !m.success).length
+    };
+  }
+
+  private getApiMappingStats(apiMappings: ApiMapping[]) {
+    return {
+      total: apiMappings.length,
+      successful: apiMappings.filter(m => m.success).length,
+      failed: apiMappings.filter(m => !m.success).length
+    };
+  }
+
+  private getTransformStats() {
+    const now = new Date();
+    const recentTraces = this.transformTraces.filter(trace => {
+      const traceTime = new Date(trace.timestamp);
+      return now.getTime() - traceTime.getTime() < 60 * 60 * 1000; // 1時間以内
+    });
+
+    const avgSize = this.transformTraces.length > 0 
+      ? this.transformTraces.reduce((sum, trace) => sum + trace.transformedCode.length, 0) / this.transformTraces.length
+      : 0;
+
+    return {
+      total: this.transformTraces.length,
+      recent: recentTraces.length,
+      averageSize: Math.round(avgSize)
+    };
+  }
+
   getStatistics(): {
     totalEventMappings: number;
     successfulEventMappings: number;
@@ -381,25 +428,21 @@ export class DebugHelper {
     const allEventMappings = this.debugInfo.flatMap(info => info.eventMappings);
     const allApiMappings = this.debugInfo.flatMap(info => info.apiMappings);
     
-    const now = new Date();
-    const recentTraces = this.transformTraces.filter(trace => {
-      const traceTime = new Date(trace.timestamp);
-      return now.getTime() - traceTime.getTime() < 60 * 60 * 1000; // 1時間以内
-    });
-
-    const avgSize = this.transformTraces.reduce((sum, trace) => sum + trace.transformedCode.length, 0) / this.transformTraces.length;
+    const eventStats = this.getEventMappingStats(allEventMappings);
+    const apiStats = this.getApiMappingStats(allApiMappings);
+    const transformStats = this.getTransformStats();
 
     return {
-      totalEventMappings: allEventMappings.length,
-      successfulEventMappings: allEventMappings.filter(m => m.success).length,
-      failedEventMappings: allEventMappings.filter(m => !m.success).length,
-      totalApiMappings: allApiMappings.length,
-      successfulApiMappings: allApiMappings.filter(m => m.success).length,
-      failedApiMappings: allApiMappings.filter(m => !m.success).length,
+      totalEventMappings: eventStats.total,
+      successfulEventMappings: eventStats.successful,
+      failedEventMappings: eventStats.failed,
+      totalApiMappings: apiStats.total,
+      successfulApiMappings: apiStats.successful,
+      failedApiMappings: apiStats.failed,
       totalErrors: allErrors.length,
-      totalTransforms: this.transformTraces.length,
-      recentTransforms: recentTraces.length,
-      averageTransformSize: Math.round(avgSize || 0)
+      totalTransforms: transformStats.total,
+      recentTransforms: transformStats.recent,
+      averageTransformSize: transformStats.averageSize
     };
   }
 
