@@ -34,6 +34,44 @@ export function kintoneBridge(options: KintoneBridgeOptions = {}): Plugin {
   // ホットリロード用の変換キャッシュ
   const transformCache = new Map<string, { code: string; map?: string; timestamp: number }>();
   
+  // ヘルパー関数を定義
+  const needsTransform = (file: string): boolean => {
+    try {
+      const fs = require('fs');
+      if (fs.existsSync(file)) {
+        const content = fs.readFileSync(file, 'utf8');
+        // ktn-bridge関連の変換対象コードの判定
+        return content.includes('addEventListener') || 
+               content.includes('fetch(') || 
+               content.includes('document.') ||
+               content.includes('window.');
+      }
+    } catch (error) {
+      console.warn(`[ktn-bridge] Failed to check file ${file}:`, error);
+    }
+    return false;
+  };
+  
+  // 依存関係のあるモジュールを検出
+  const findDependentModules = (file: string, modules: any[]): any[] => {
+    const dependentModules = new Set(modules.filter(mod => mod.file === file));
+    
+    // 依存関係を辿って関連モジュールを追加
+    modules.forEach(mod => {
+      if (mod.file && mod.file !== file) {
+        // インポート関係をチェック（簡易版）
+        if (mod.importers && mod.importers.some((imp: any) => imp.file === file)) {
+          dependentModules.add(mod);
+        }
+        if (mod.importedModules && mod.importedModules.some((imp: any) => imp.file === file)) {
+          dependentModules.add(mod);
+        }
+      }
+    });
+    
+    return Array.from(dependentModules);
+  };
+  
   return {
     name: 'kintone-bridge',
     buildStart() {
@@ -81,11 +119,12 @@ export function kintoneBridge(options: KintoneBridgeOptions = {}): Plugin {
     },
     handleHotUpdate(ctx) {
       // ホットリロード時の処理
-      const { file } = ctx;
+      const { file, modules } = ctx;
       
       // 変換キャッシュから古いエントリを削除
       if (transformCache.has(file)) {
         transformCache.delete(file);
+        console.log(`[ktn-bridge] Cleared cache for: ${file}`);
       }
       
       // kintone関連ファイルの変更を検出
@@ -93,10 +132,32 @@ export function kintoneBridge(options: KintoneBridgeOptions = {}): Plugin {
         console.log(`[ktn-bridge] Hot reloading: ${file}`);
         
         // 関連ファイルのキャッシュもクリア
+        let clearedCount = 0;
         for (const [key] of transformCache) {
           if (key.includes('kintone') || key.includes('ktn-bridge')) {
             transformCache.delete(key);
+            clearedCount++;
           }
+        }
+        
+        if (clearedCount > 0) {
+          console.log(`[ktn-bridge] Cleared ${clearedCount} related cache entries`);
+        }
+      }
+      
+      // TypeScript/JavaScriptファイルの変更検出
+      if (file.endsWith('.ts') || file.endsWith('.js')) {
+        console.log(`[ktn-bridge] Processing hot update for: ${file}`);
+        
+        // 変換が必要なファイルかチェック
+        const needsTransformResult = needsTransform(file);
+        
+        if (needsTransformResult) {
+          // 変換対象ファイルの場合、依存関係も含めて更新
+          const dependentModules = findDependentModules(file, modules);
+          console.log(`[ktn-bridge] Updating ${dependentModules.length} dependent modules`);
+          
+          return dependentModules;
         }
       }
       

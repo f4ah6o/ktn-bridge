@@ -251,6 +251,187 @@ kintone.events.on('app.record.edit.submit', (event) => {
 });`
     },
     since: '2019.02'
+  },
+  
+  // フィールド変更イベント
+  'app.record.edit.change': {
+    kintoneEvent: 'app.record.edit.change',
+    web: {
+      event: 'change',
+      selector: 'input, select, textarea',
+      description: 'レコード編集時のフィールド値変更'
+    },
+    transform: {
+      in: (webEvent: Event): KintoneEvent => {
+        const target = webEvent.target as HTMLInputElement;
+        return {
+          type: 'app.record.edit.change',
+          record: {},
+          changes: {
+            field: {
+              type: target.type,
+              value: target.value
+            }
+          },
+          fieldName: target.name
+        };
+      },
+      out: (kintoneEvent: KintoneEvent): CustomEvent => 
+        new CustomEvent('fieldchange', {
+          detail: { 
+            record: kintoneEvent.record,
+            changes: kintoneEvent.changes,
+            fieldName: kintoneEvent.fieldName
+          }
+        })
+    },
+    example: {
+      web: `
+// Web標準の書き方
+document.addEventListener('change', (e) => {
+  const target = e.target as HTMLInputElement;
+  if (target.name === 'title') {
+    console.log('タイトルが変更されました:', target.value);
+  }
+});`,
+      kintone: `
+// kintoneの書き方
+kintone.events.on('app.record.edit.change.title', (event) => {
+  console.log('タイトルが変更されました:', event.changes.field.value);
+  return event;
+});`
+    },
+    since: '2019.02'
+  },
+  
+  // ページ離脱前のイベント
+  'app.record.edit.beforeunload': {
+    kintoneEvent: 'app.record.edit.beforeunload',
+    web: {
+      event: 'beforeunload',
+      selector: 'window',
+      description: 'レコード編集中のページ離脱前'
+    },
+    transform: {
+      in: (_webEvent: Event): KintoneEvent => ({
+        type: 'app.record.edit.beforeunload',
+        record: {},
+        hasUnsavedChanges: true
+      }),
+      out: (kintoneEvent: KintoneEvent): CustomEvent => 
+        new CustomEvent('beforeunload', {
+          detail: { 
+            record: kintoneEvent.record,
+            hasUnsavedChanges: kintoneEvent.hasUnsavedChanges
+          }
+        })
+    },
+    example: {
+      web: `
+// Web標準の書き方
+document.addEventListener('beforeunload', (e) => {
+  if (hasUnsavedChanges()) {
+    e.preventDefault();
+    e.returnValue = 'データが保存されていません';
+  }
+});`,
+      kintone: `
+// kintoneの書き方
+kintone.events.on('app.record.edit.beforeunload', (event) => {
+  if (event.hasUnsavedChanges) {
+    event.cancel = true;
+    event.message = 'データが保存されていません';
+  }
+  return event;
+});`
+    },
+    since: '2019.02'
+  },
+  
+  // カスタムイベント
+  'app.record.custom.bulkEdit': {
+    kintoneEvent: 'app.record.custom.bulkEdit',
+    web: {
+      event: 'bulkEditStart',
+      selector: 'document',
+      description: '一括編集開始時のカスタムイベント'
+    },
+    transform: {
+      in: (webEvent: Event): KintoneEvent => ({
+        type: 'app.record.custom.bulkEdit',
+        selectedRecords: (webEvent as CustomEvent).detail?.selectedRecords || [],
+        timestamp: (webEvent as CustomEvent).detail?.timestamp
+      }),
+      out: (kintoneEvent: KintoneEvent): CustomEvent => 
+        new CustomEvent('bulkEditStart', {
+          detail: { 
+            selectedRecords: kintoneEvent.selectedRecords,
+            timestamp: kintoneEvent.timestamp
+          }
+        })
+    },
+    example: {
+      web: `
+// Web標準の書き方
+document.addEventListener('bulkEditStart', (e) => {
+  const selectedRecords = e.detail.selectedRecords;
+  console.log('一括編集を開始します:', selectedRecords);
+});`,
+      kintone: `
+// kintoneの書き方
+kintone.events.on('app.record.custom.bulkEdit', (event) => {
+  const selectedRecords = event.selectedRecords;
+  console.log('一括編集を開始します:', selectedRecords);
+  return event;
+});`
+    },
+    since: '2024.12'
+  },
+  
+  // クリックイベント（汎用）
+  'app.record.index.click': {
+    kintoneEvent: 'app.record.index.click',
+    web: {
+      event: 'click',
+      selector: '[data-action]',
+      description: 'レコード一覧でのアクション実行'
+    },
+    transform: {
+      in: (webEvent: Event): KintoneEvent => {
+        const target = webEvent.target as HTMLElement;
+        return {
+          type: 'app.record.index.click',
+          action: target.dataset.action || '',
+          element: target
+        };
+      },
+      out: (kintoneEvent: KintoneEvent): CustomEvent => 
+        new CustomEvent('actionclick', {
+          detail: { 
+            action: kintoneEvent.action,
+            element: kintoneEvent.element
+          }
+        })
+    },
+    example: {
+      web: `
+// Web標準の書き方
+document.addEventListener('click', (e) => {
+  const target = e.target as HTMLElement;
+  if (target.matches('[data-action="bulk-edit"]')) {
+    console.log('一括編集ボタンがクリックされました');
+  }
+});`,
+      kintone: `
+// kintoneの書き方
+kintone.events.on('app.record.index.click', (event) => {
+  if (event.action === 'bulk-edit') {
+    console.log('一括編集ボタンがクリックされました');
+  }
+  return event;
+});`
+    },
+    since: '2024.12'
   }
 };
 

@@ -4,6 +4,18 @@ export interface KintoneEvent {
   recordId?: string;
   records?: KintoneRecord[];
   record?: KintoneRecord;
+  changes?: {
+    field: {
+      type: string;
+      value: any;
+    };
+  };
+  fieldName?: string;
+  hasUnsavedChanges?: boolean;
+  selectedRecords?: string[];
+  timestamp?: string;
+  action?: string;
+  element?: HTMLElement;
   [key: string]: any;
 }
 

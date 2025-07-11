@@ -6,14 +6,17 @@ import { SourceMapGenerator } from 'source-map';
 import type { TransformResult, TransformOptions, EventMapping, ApiMapping } from './types';
 import { getEventMapping } from './mappings/events';
 import { getApiMapping } from './mappings/apis';
+import { ErrorHandler, createTransformError } from './error-handler';
 
 export class KintoneTransformer {
   private eventMappings: Map<string, EventMapping>;
   private apiMappings: Map<string, ApiMapping>;
+  private errorHandler: ErrorHandler;
   
   constructor() {
     this.eventMappings = new Map();
     this.apiMappings = new Map();
+    this.errorHandler = ErrorHandler.getInstance();
     this.loadEventMappings();
     this.loadApiMappings();
   }
@@ -25,7 +28,11 @@ export class KintoneTransformer {
       'app.record.create.show',
       'app.record.edit.show',
       'app.record.create.submit',
-      'app.record.edit.submit'
+      'app.record.edit.submit',
+      'app.record.edit.change',
+      'app.record.edit.beforeunload',
+      'app.record.custom.bulkEdit',
+      'app.record.index.click'
     ];
     
     eventTypes.forEach(eventType => {
@@ -87,8 +94,32 @@ export class KintoneTransformer {
         dependencies
       };
     } catch (error) {
-      throw new Error(`Transform failed: ${error instanceof Error ? error.message : String(error)}`);
+      const transformError = createTransformError(
+        `Transform failed: ${error instanceof Error ? error.message : String(error)}`,
+        filename,
+        code,
+        undefined, // transformed code is not available in case of error
+        this.getErrorLine(error),
+        this.getErrorColumn(error)
+      );
+      
+      this.errorHandler.handleError(transformError);
+      throw transformError;
     }
+  }
+  
+  private getErrorLine(error: any): number | undefined {
+    if (error && typeof error.loc === 'object' && typeof error.loc.line === 'number') {
+      return error.loc.line;
+    }
+    return undefined;
+  }
+  
+  private getErrorColumn(error: any): number | undefined {
+    if (error && typeof error.loc === 'object' && typeof error.loc.column === 'number') {
+      return error.loc.column;
+    }
+    return undefined;
   }
   
   private transformAST(
