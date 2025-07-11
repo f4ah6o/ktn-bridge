@@ -7,16 +7,23 @@ import type { TransformResult, TransformOptions, EventMapping, ApiMapping } from
 import { getEventMapping } from './mappings/events';
 import { getApiMapping } from './mappings/apis';
 import { ErrorHandler, createTransformError } from './error-handler';
+import { DebugHelper, type DebugInfo, type TransformTrace } from './debug-helper';
 
 export class KintoneTransformer {
   private eventMappings: Map<string, EventMapping>;
   private apiMappings: Map<string, ApiMapping>;
   private errorHandler: ErrorHandler;
+  private debugHelper: DebugHelper;
   
-  constructor() {
+  constructor(options?: { enableDebug?: boolean }) {
     this.eventMappings = new Map();
     this.apiMappings = new Map();
     this.errorHandler = ErrorHandler.getInstance();
+    this.debugHelper = new DebugHelper({
+      enableTransformTrace: options?.enableDebug || false,
+      enableErrorDetails: options?.enableDebug || false,
+      logLevel: options?.enableDebug ? 'debug' : 'warn'
+    });
     this.loadEventMappings();
     this.loadApiMappings();
   }
@@ -75,8 +82,13 @@ export class KintoneTransformer {
       }) : null;
       
       const dependencies: string[] = [];
+      const debugInfo: DebugInfo = {
+        eventMappings: [],
+        apiMappings: [],
+        errors: []
+      };
       
-      const transformedAst = this.transformAST(ast, map, dependencies, target);
+      const transformedAst = this.transformAST(ast, map, dependencies, target, debugInfo);
       
       const result = generate(transformedAst, {
         sourceMaps: sourceMap,
@@ -87,6 +99,32 @@ export class KintoneTransformer {
       if (map) {
         map.setSourceContent(filename, code);
       }
+      
+      // デバッグ情報を記録
+      this.debugHelper.recordDebugInfo(debugInfo);
+      
+      // 変換トレースを記録
+      const transformTrace: TransformTrace = {
+        originalCode: code,
+        transformedCode: result.code,
+        sourceMap: map?.toString(),
+        mappings: [],
+        timestamp: new Date().toISOString(),
+        filename
+      };
+      this.debugHelper.recordTransformTrace(transformTrace);
+      
+      // 変換の妥当性をチェック
+      const validationIssues = this.debugHelper.validateTransform(code, result.code);
+      validationIssues.forEach(issue => {
+        debugInfo.errors.push({
+          message: issue.message,
+          location: { line: 0, column: 0 },
+          severity: issue.type,
+          code: 'validation',
+          suggestions: issue.suggestion ? [issue.suggestion] : []
+        });
+      });
       
       return {
         code: result.code,
@@ -126,12 +164,13 @@ export class KintoneTransformer {
     ast: t.File,
     map: SourceMapGenerator | null,
     _dependencies: string[],
-    target: 'development' | 'production'
+    target: 'development' | 'production',
+    debugInfo?: DebugInfo
   ): t.File {
     traverse(ast, {
       CallExpression: (path) => {
         if (this.isAddEventListener(path.node)) {
-          this.transformEventListener(path, target, map);
+          this.transformEventListener(path, target, map, debugInfo);
         } else if (this.isFetchCall(path.node)) {
           this.transformFetchCall(path, target, map);
         }
@@ -158,17 +197,49 @@ export class KintoneTransformer {
   private transformEventListener(
     path: any,
     target: 'development' | 'production',
-    map: SourceMapGenerator | null
+    map: SourceMapGenerator | null,
+    debugInfo?: DebugInfo
   ): void {
     const args = path.node.arguments;
     
     if (args.length >= 2 && t.isStringLiteral(args[0])) {
       const eventType = args[0].value;
+      const location = { line: path.node.loc?.start.line || 0, column: path.node.loc?.start.column || 0 };
       
-      if (eventType === 'DOMContentLoaded') {
-        this.transformDOMContentLoaded(path, target, map);
-      } else if (eventType === 'submit') {
-        this.transformSubmitEvent(path, target, map);
+      try {
+        if (eventType === 'DOMContentLoaded') {
+          this.transformDOMContentLoaded(path, target, map);
+          debugInfo?.eventMappings.push({
+            webEvent: 'DOMContentLoaded',
+            kintoneEvent: 'app.record.index.show',
+            location,
+            success: true
+          });
+        } else if (eventType === 'submit') {
+          this.transformSubmitEvent(path, target, map);
+          debugInfo?.eventMappings.push({
+            webEvent: 'submit',
+            kintoneEvent: 'app.record.edit.submit',
+            location,
+            success: true
+          });
+        } else {
+          debugInfo?.eventMappings.push({
+            webEvent: eventType,
+            kintoneEvent: 'unknown',
+            location,
+            success: false,
+            error: `Unsupported event type: ${eventType}`
+          });
+        }
+      } catch (error) {
+        debugInfo?.eventMappings.push({
+          webEvent: eventType,
+          kintoneEvent: 'unknown',
+          location,
+          success: false,
+          error: error instanceof Error ? error.message : String(error)
+        });
       }
     }
   }

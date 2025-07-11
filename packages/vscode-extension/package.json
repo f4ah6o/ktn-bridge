@@ -1,0 +1,182 @@
+{
+  "name": "ktn-bridge",
+  "displayName": "ktn-bridge",
+  "description": "kintone development with Web standards",
+  "version": "0.1.0",
+  "publisher": "ktn-bridge",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/f4ah6o/ktn-bridge.git"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Debuggers",
+    "Other"
+  ],
+  "keywords": [
+    "kintone",
+    "javascript",
+    "typescript",
+    "web-standards",
+    "development"
+  ],
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "workspaceContains:**/ktn-bridge.config.*",
+    "workspaceContains:**/vite.config.*"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "ktn-bridge",
+        "aliases": [
+          "ktn-bridge",
+          "kintone-bridge"
+        ],
+        "extensions": [
+          ".ktn.ts",
+          ".ktn.js"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "ktn-bridge.init",
+        "title": "Initialize ktn-bridge project",
+        "category": "ktn-bridge"
+      },
+      {
+        "command": "ktn-bridge.dev",
+        "title": "Start development server",
+        "category": "ktn-bridge"
+      },
+      {
+        "command": "ktn-bridge.build",
+        "title": "Build project",
+        "category": "ktn-bridge"
+      },
+      {
+        "command": "ktn-bridge.preview",
+        "title": "Preview transformed code",
+        "category": "ktn-bridge"
+      },
+      {
+        "command": "ktn-bridge.generateTypes",
+        "title": "Generate TypeScript types",
+        "category": "ktn-bridge"
+      },
+      {
+        "command": "ktn-bridge.generateDocs",
+        "title": "Generate documentation",
+        "category": "ktn-bridge"
+      },
+      {
+        "command": "ktn-bridge.showPatterns",
+        "title": "Show pattern library",
+        "category": "ktn-bridge"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "ktn-bridge.dev",
+        "key": "ctrl+shift+d",
+        "mac": "cmd+shift+d",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "ktn-bridge.build",
+        "key": "ctrl+shift+b",
+        "mac": "cmd+shift+b",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "ktn-bridge.preview",
+        "key": "ctrl+shift+p",
+        "mac": "cmd+shift+p",
+        "when": "editorTextFocus"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "when": "resourceExtname == .ts || resourceExtname == .js",
+          "command": "ktn-bridge.preview",
+          "group": "ktn-bridge"
+        }
+      ],
+      "editor/context": [
+        {
+          "when": "resourceExtname == .ts || resourceExtname == .js",
+          "command": "ktn-bridge.preview",
+          "group": "ktn-bridge"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "ktn-bridge",
+      "properties": {
+        "ktn-bridge.autoPreview": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically preview transformed code when editing"
+        },
+        "ktn-bridge.showInlineErrors": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show inline error messages in editor"
+        },
+        "ktn-bridge.devServerPort": {
+          "type": "number",
+          "default": 3355,
+          "description": "Development server port"
+        },
+        "ktn-bridge.enableDebugMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable debug mode for transformation"
+        },
+        "ktn-bridge.patternLibrary.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable pattern library suggestions"
+        }
+      }
+    },
+    "snippets": [
+      {
+        "language": "typescript",
+        "path": "./snippets/ktn-bridge.json"
+      },
+      {
+        "language": "javascript",
+        "path": "./snippets/ktn-bridge.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm run build",
+    "build": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "pnpm run build",
+    "test": "node ./dist/test/runTest.js",
+    "lint": "biome check src",
+    "format": "biome format --write src"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "@vscode/test-electron": "^2.3.8",
+    "typescript": "^5.3.0",
+    "@biomejs/biome": "^1.4.1"
+  },
+  "dependencies": {
+    "@ktn-bridge/core": "workspace:*"
+  }
+}

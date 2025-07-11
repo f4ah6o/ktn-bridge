@@ -1,0 +1,237 @@
+{
+  "Record List Event": {
+    "prefix": "ktn-record-list",
+    "body": [
+      "document.addEventListener('DOMContentLoaded', (event) => {",
+      "  const page = document.querySelector('[data-page=\"record-list\"]');",
+      "  if (page) {",
+      "    console.log('レコード一覧が表示されました');",
+      "    $1",
+      "  }",
+      "});"
+    ],
+    "description": "レコード一覧画面の初期化処理"
+  },
+  "Record Detail Event": {
+    "prefix": "ktn-record-detail",
+    "body": [
+      "document.addEventListener('DOMContentLoaded', (event) => {",
+      "  const page = document.querySelector('[data-page=\"record-detail\"]');",
+      "  if (page) {",
+      "    console.log('レコード詳細が表示されました');",
+      "    $1",
+      "  }",
+      "});"
+    ],
+    "description": "レコード詳細画面の初期化処理"
+  },
+  "Field Change Event": {
+    "prefix": "ktn-field-change",
+    "body": [
+      "document.addEventListener('change', (event) => {",
+      "  const target = event.target as HTMLInputElement;",
+      "  if (target.name === '${1:fieldName}') {",
+      "    console.log('フィールドが変更されました:', target.value);",
+      "    $2",
+      "  }",
+      "});"
+    ],
+    "description": "フィールド値変更時の処理"
+  },
+  "Form Submit Event": {
+    "prefix": "ktn-form-submit",
+    "body": [
+      "document.addEventListener('submit', (event) => {",
+      "  const form = event.target as HTMLFormElement;",
+      "  if (form.dataset.formType === 'record-edit') {",
+      "    event.preventDefault();",
+      "    console.log('フォーム送信処理');",
+      "    $1",
+      "  }",
+      "});"
+    ],
+    "description": "フォーム送信時の処理"
+  },
+  "Before Unload Event": {
+    "prefix": "ktn-before-unload",
+    "body": [
+      "document.addEventListener('beforeunload', (event) => {",
+      "  if (${1:hasUnsavedChanges}) {",
+      "    event.preventDefault();",
+      "    return 'データが保存されていません。本当に離脱しますか？';",
+      "  }",
+      "});"
+    ],
+    "description": "ページ離脱時の確認処理"
+  },
+  "Fetch Records": {
+    "prefix": "ktn-fetch-records",
+    "body": [
+      "try {",
+      "  const response = await fetch('/api/records?app=${1:appId}');",
+      "  const data = await response.json();",
+      "  console.log('取得したレコード:', data.records);",
+      "  $2",
+      "} catch (error) {",
+      "  console.error('レコード取得エラー:', error);",
+      "}"
+    ],
+    "description": "レコード一覧を取得"
+  },
+  "Fetch Record": {
+    "prefix": "ktn-fetch-record",
+    "body": [
+      "try {",
+      "  const response = await fetch('/api/record?app=${1:appId}&id=${2:recordId}');",
+      "  const data = await response.json();",
+      "  console.log('取得したレコード:', data.record);",
+      "  $3",
+      "} catch (error) {",
+      "  console.error('レコード取得エラー:', error);",
+      "}"
+    ],
+    "description": "レコード詳細を取得"
+  },
+  "Create Record": {
+    "prefix": "ktn-create-record",
+    "body": [
+      "try {",
+      "  const response = await fetch('/api/record', {",
+      "    method: 'POST',",
+      "    headers: { 'Content-Type': 'application/json' },",
+      "    body: JSON.stringify({",
+      "      app: ${1:appId},",
+      "      record: {",
+      "        ${2:fieldName}: { value: '${3:value}' }",
+      "      }",
+      "    })",
+      "  });",
+      "  const data = await response.json();",
+      "  console.log('作成したレコード:', data);",
+      "  $4",
+      "} catch (error) {",
+      "  console.error('レコード作成エラー:', error);",
+      "}"
+    ],
+    "description": "レコードを作成"
+  },
+  "Update Record": {
+    "prefix": "ktn-update-record",
+    "body": [
+      "try {",
+      "  const response = await fetch('/api/record', {",
+      "    method: 'PUT',",
+      "    headers: { 'Content-Type': 'application/json' },",
+      "    body: JSON.stringify({",
+      "      app: ${1:appId},",
+      "      id: ${2:recordId},",
+      "      record: {",
+      "        ${3:fieldName}: { value: '${4:value}' }",
+      "      }",
+      "    })",
+      "  });",
+      "  const data = await response.json();",
+      "  console.log('更新したレコード:', data);",
+      "  $5",
+      "} catch (error) {",
+      "  console.error('レコード更新エラー:', error);",
+      "}"
+    ],
+    "description": "レコードを更新"
+  },
+  "Auto Save": {
+    "prefix": "ktn-auto-save",
+    "body": [
+      "async function autoSave(fieldName: string, value: string) {",
+      "  try {",
+      "    const response = await fetch('/api/record/auto-save', {",
+      "      method: 'POST',",
+      "      headers: { 'Content-Type': 'application/json' },",
+      "      body: JSON.stringify({ fieldName, value })",
+      "    });",
+      "    ",
+      "    if (response.ok) {",
+      "      showSaveIndicator('success');",
+      "    }",
+      "  } catch (error) {",
+      "    showSaveIndicator('error');",
+      "  }",
+      "}",
+      "",
+      "document.addEventListener('change', async (event) => {",
+      "  const target = event.target as HTMLInputElement;",
+      "  if (target.name === '${1:fieldName}') {",
+      "    await autoSave(target.name, target.value);",
+      "  }",
+      "});"
+    ],
+    "description": "自動保存機能"
+  },
+  "Bulk Operations": {
+    "prefix": "ktn-bulk-operations",
+    "body": [
+      "document.addEventListener('click', (event) => {",
+      "  const target = event.target as HTMLElement;",
+      "  if (target.matches('[data-action=\"bulk-edit\"]')) {",
+      "    const selectedRecords = getSelectedRecords();",
+      "    ",
+      "    const bulkEvent = new CustomEvent('bulkEditStart', {",
+      "      detail: { selectedRecords }",
+      "    });",
+      "    ",
+      "    document.dispatchEvent(bulkEvent);",
+      "  }",
+      "});",
+      "",
+      "document.addEventListener('bulkEditStart', async (event) => {",
+      "  const { selectedRecords } = event.detail;",
+      "  ",
+      "  try {",
+      "    for (const recordId of selectedRecords) {",
+      "      await updateRecord(recordId, { ${1:fieldName}: '${2:value}' });",
+      "    }",
+      "    ",
+      "    showNotification('一括更新が完了しました');",
+      "  } catch (error) {",
+      "    showNotification('一括更新に失敗しました');",
+      "  }",
+      "});"
+    ],
+    "description": "一括操作パターン"
+  },
+  "Custom Event": {
+    "prefix": "ktn-custom-event",
+    "body": [
+      "// カスタムイベントを発火",
+      "const customEvent = new CustomEvent('${1:eventName}', {",
+      "  detail: { ${2:data} }",
+      "});",
+      "document.dispatchEvent(customEvent);",
+      "",
+      "// カスタムイベントを受け取る",
+      "document.addEventListener('${1:eventName}', (event) => {",
+      "  const { ${2:data} } = event.detail;",
+      "  console.log('カスタムイベント受信:', ${2:data});",
+      "  $3",
+      "});"
+    ],
+    "description": "カスタムイベントの作成と処理"
+  },
+  "Error Handling": {
+    "prefix": "ktn-error-handling",
+    "body": [
+      "try {",
+      "  $1",
+      "} catch (error) {",
+      "  console.error('エラーが発生しました:', error);",
+      "  ",
+      "  // エラー通知を表示",
+      "  showNotification('エラーが発生しました', 'error');",
+      "  ",
+      "  // 必要に応じて再試行やフォールバック処理",
+      "  $2",
+      "}"
+    ],
+    "description": "エラーハンドリングのテンプレート"
+  }
+}
