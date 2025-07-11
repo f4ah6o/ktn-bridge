@@ -1,0 +1,30 @@
+{
+  "name": "ktn-bridge",
+  "version": "0.1.0",
+  "description": "kintone customization development framework",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter '@ktn-bridge/cli' dev",
+    "build": "pnpm --filter '@ktn-bridge/core' build && pnpm --filter '@ktn-bridge/dev-server' build && pnpm --filter '@ktn-bridge/cli' build",
+    "test": "pnpm --filter '*' test",
+    "lint": "biome lint packages/*/src",
+    "format": "biome format packages/*/src",
+    "check": "biome check packages/*/src"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.8.0",
+    "typescript": "^5.4.0",
+    "vitest": "^2.0.0"
+  },
+  "keywords": [
+    "kintone",
+    "bridge",
+    "development-framework"
+  ],
+  "author": "fu2hito",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "@ktn-bridge/core",
+  "version": "0.1.0",
+  "description": "Core transformation logic for ktn-bridge",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "lint": "biome lint src"
+  },
+  "dependencies": {
+    "@babel/core": "^7.24.0",
+    "@babel/parser": "^7.24.0",
+    "@babel/generator": "^7.24.0",
+    "@babel/traverse": "^7.24.0",
+    "@babel/types": "^7.24.0",
+    "source-map": "^0.7.4"
+  },
+  "devDependencies": {
+    "@types/babel__core": "^7.20.5",
+    "@types/babel__generator": "^7.6.8",
+    "@types/babel__traverse": "^7.20.5",
+    "@types/source-map": "^0.5.7",
+    "typescript": "^5.4.0",
+    "vitest": "^2.0.0"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "keywords": [
+    "kintone",
+    "transformer",
+    "bridge"
+  ],
+  "author": "fu2hito",
+  "license": "MIT"
+}
