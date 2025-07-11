@@ -9,7 +9,7 @@ export function createInitCommand(): Command {
     .description('Initialize a new ktn-bridge project')
     .argument('<name>', 'project name')
     .option('-t, --template <template>', 'template to use', 'basic')
-    .action(async (name: string, options: { template: string }) => {
+    .action(async (name: string, _options: { template: string }) => {
       const projectPath = join(process.cwd(), name);
       
       if (existsSync(projectPath)) {

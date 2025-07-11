@@ -19,15 +19,20 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
+    "composite": true,
     "outDir": "./dist",
-    "rootDir": "./src",
     "baseUrl": ".",
     "paths": {
-      "@ktn-bridge/core": ["packages/core/src"],
-      "@ktn-bridge/dev-server": ["packages/dev-server/src"],
-      "@ktn-bridge/cli": ["packages/cli/src"]
+      "@ktn-bridge/core": ["packages/core/dist"],
+      "@ktn-bridge/dev-server": ["packages/dev-server/dist"],
+      "@ktn-bridge/cli": ["packages/cli/dist"]
     }
   },
-  "include": ["packages/*/src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "include": [],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/dev-server" },
+    { "path": "packages/cli" }
+  ]
 }

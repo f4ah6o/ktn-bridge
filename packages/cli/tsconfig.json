@@ -1,14 +1,35 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
     "rootDir": "./src",
     "baseUrl": ".",
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
     "paths": {
-      "@ktn-bridge/core": ["../core/src"],
-      "@ktn-bridge/dev-server": ["../dev-server/src"]
+      "@ktn-bridge/core": ["../core/dist"],
+      "@ktn-bridge/dev-server": ["../dev-server/dist"]
     }
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "exclude": ["node_modules", "dist", "**/*.test.ts"],
+  "references": [
+    { "path": "../core" },
+    { "path": "../dev-server" }
+  ]
 }
