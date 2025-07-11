@@ -22,7 +22,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "paths": {
-      "@ktn-bridge/core": ["../core/dist"]
+      "@ktn-bridge/core": ["../core/src"]
     }
   },
   "include": ["src/**/*"],

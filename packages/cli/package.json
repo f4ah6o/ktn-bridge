@@ -2,6 +2,7 @@
   "name": "@ktn-bridge/cli",
   "version": "0.1.0",
   "description": "CLI tool for ktn-bridge",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {

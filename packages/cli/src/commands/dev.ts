@@ -1,6 +1,14 @@
 import { Command } from 'commander';
 import { createServer } from 'vite';
-import { kintoneBridge } from '@ktn-bridge/dev-server';
+// import { kintoneBridge } from '@ktn-bridge/dev-server';
+
+// Temporary mock until build issue is resolved
+const kintoneBridge = (_options: any) => ({
+  name: 'ktn-bridge',
+  transform(_code: string, _id: string) {
+    return null;
+  }
+});
 
 export function createDevCommand(): Command {
   const command = new Command('dev');

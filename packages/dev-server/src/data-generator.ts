@@ -1,4 +1,14 @@
-import type { KintoneRecord, KintoneFieldValue } from '@ktn-bridge/core';
+// import type { KintoneRecord, KintoneFieldValue } from '@ktn-bridge/core';
+
+// Temporary type definitions until build issue is resolved
+interface KintoneFieldValue {
+  type: string;
+  value: any;
+}
+
+interface KintoneRecord {
+  [key: string]: KintoneFieldValue;
+}
 
 export interface DataGeneratorOptions {
   recordCount?: number;
@@ -8,13 +18,9 @@ export interface DataGeneratorOptions {
 
 export class DataGenerator {
   private recordCount: number;
-  private appId: string;
-  private locale: string;
 
   constructor(options: DataGeneratorOptions = {}) {
     this.recordCount = options.recordCount || 10;
-    this.appId = options.appId || '1';
-    this.locale = options.locale || 'ja';
   }
 
   generateRecords(): KintoneRecord[] {

@@ -64,9 +64,9 @@ export class KintoneTransformer {
       
       const map = sourceMap ? new SourceMapGenerator({ 
         file: filename,
-        sourceRoot: '.',
-        sources: [filename]
+        sourceRoot: '.'
       }) : null;
+      
       const dependencies: string[] = [];
       
       const transformedAst = this.transformAST(ast, map, dependencies, target);
