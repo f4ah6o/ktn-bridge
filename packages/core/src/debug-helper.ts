@@ -15,13 +15,15 @@ export interface TransformTrace {
   originalCode: string;
   transformedCode: string;
   sourceMap?: string;
-  mappings: Array<{
+  mappings?: Array<{
     original: { line: number; column: number };
     transformed: { line: number; column: number };
     name?: string;
   }>;
   timestamp: string;
   filename: string;
+  transformDuration: number;
+  transformedAt: string;
 }
 
 export interface DebugInfo {
@@ -33,9 +35,10 @@ export interface DebugInfo {
     error?: string;
   }>;
   apiMappings: Array<{
-    webApi: string;
+    webUrl: string;
     kintoneApi: string;
-    location: { line: number; column: number };
+    method: string;
+    location?: { line: number; column: number };
     success: boolean;
     error?: string;
   }>;
@@ -125,26 +128,34 @@ export class DebugHelper {
    * 変換デバッグレポートを生成
    */
   generateTransformReport(filename: string): string {
+    if (!this.options.enableTransformTrace) {
+      return `Transform trace not enabled`;
+    }
+
     const trace = this.transformTraces.find(t => t.filename === filename);
     if (!trace) {
-      return 'No transform trace found for this file';
+      return `No transform trace found for ${filename}`;
     }
 
     const report = [
-      `=== Transform Report for ${filename} ===`,
+      `Transform Report: ${filename}`,
       `Timestamp: ${trace.timestamp}`,
+      `Duration: ${trace.transformDuration}ms`,
       ``,
       `Original Code:`,
       `${trace.originalCode}`,
       ``,
       `Transformed Code:`,
       `${trace.transformedCode}`,
-      ``,
-      `Mappings:`,
-      ...trace.mappings.map(m => 
-        `  ${m.original.line}:${m.original.column} → ${m.transformed.line}:${m.transformed.column}${m.name ? ` (${m.name})` : ''}`
-      )
+      ``
     ];
+
+    if (trace.mappings && trace.mappings.length > 0) {
+      report.push(`Mappings:`);
+      report.push(...trace.mappings.map(m => 
+        `  ${m.original.line}:${m.original.column} → ${m.transformed.line}:${m.transformed.column}${m.name ? ` (${m.name})` : ''}`
+      ));
+    }
 
     if (trace.sourceMap) {
       report.push(``, `Source Map:`, trace.sourceMap);
@@ -186,21 +197,33 @@ export class DebugHelper {
    */
   generateDiagnosticReport(): string {
     const allErrors = this.debugInfo.flatMap(info => info.errors);
+    const allEventMappings = this.debugInfo.flatMap(info => info.eventMappings);
+    const allApiMappings = this.debugInfo.flatMap(info => info.apiMappings);
+    
     const errorCounts = allErrors.reduce((counts, error) => {
       counts[error.severity] = (counts[error.severity] || 0) + 1;
       return counts;
     }, {} as Record<string, number>);
 
     const report = [
-      `=== Diagnostic Report ===`,
-      `Total Issues: ${allErrors.length}`,
-      `Errors: ${errorCounts.error || 0}`,
-      `Warnings: ${errorCounts.warning || 0}`,
-      `Info: ${errorCounts.info || 0}`,
+      `Diagnostic Report`,
+      `Event Mappings: ${allEventMappings.length}`,
+      `API Mappings: ${allApiMappings.length}`,
+      `Errors: ${allErrors.length}`,
+      ``,
+      `Event Mapping Details:`,
+      ...allEventMappings.slice(0, 3).map(mapping => 
+        `  ${mapping.webEvent} → ${mapping.kintoneEvent} (${mapping.success ? 'Success' : 'Failed'})`
+      ),
+      ``,
+      `API Mapping Details:`,
+      ...allApiMappings.slice(0, 3).map(mapping => 
+        `  ${mapping.webUrl} → ${mapping.kintoneApi} (${mapping.success ? 'Success' : 'Failed'})`
+      ),
       ``,
       `Recent Issues:`,
-      ...allErrors.slice(-10).map(error => 
-        `  ${error.severity.toUpperCase()}: ${error.message} (${error.location.line}:${error.location.column})`
+      ...allErrors.slice(-3).map(error => 
+        `  ${error.severity ? error.severity.toUpperCase() : 'ERROR'}: ${error.message}`
       )
     ];
 
@@ -343,12 +366,21 @@ export class DebugHelper {
    * 統計情報を取得
    */
   getStatistics(): {
-    totalTransforms: number;
+    totalEventMappings: number;
+    successfulEventMappings: number;
+    failedEventMappings: number;
+    totalApiMappings: number;
+    successfulApiMappings: number;
+    failedApiMappings: number;
     totalErrors: number;
+    totalTransforms: number;
     recentTransforms: number;
     averageTransformSize: number;
   } {
     const allErrors = this.debugInfo.flatMap(info => info.errors);
+    const allEventMappings = this.debugInfo.flatMap(info => info.eventMappings);
+    const allApiMappings = this.debugInfo.flatMap(info => info.apiMappings);
+    
     const now = new Date();
     const recentTraces = this.transformTraces.filter(trace => {
       const traceTime = new Date(trace.timestamp);
@@ -358,8 +390,14 @@ export class DebugHelper {
     const avgSize = this.transformTraces.reduce((sum, trace) => sum + trace.transformedCode.length, 0) / this.transformTraces.length;
 
     return {
-      totalTransforms: this.transformTraces.length,
+      totalEventMappings: allEventMappings.length,
+      successfulEventMappings: allEventMappings.filter(m => m.success).length,
+      failedEventMappings: allEventMappings.filter(m => !m.success).length,
+      totalApiMappings: allApiMappings.length,
+      successfulApiMappings: allApiMappings.filter(m => m.success).length,
+      failedApiMappings: allApiMappings.filter(m => !m.success).length,
       totalErrors: allErrors.length,
+      totalTransforms: this.transformTraces.length,
       recentTransforms: recentTraces.length,
       averageTransformSize: Math.round(avgSize || 0)
     };
