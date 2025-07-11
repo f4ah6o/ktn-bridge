@@ -23,15 +23,41 @@ export function kintoneBridge(options: KintoneBridgeOptions = {}): Plugin {
   const cache = cacheOptions ? new DataCache(cacheOptions) : globalCache;
   const dataGenerator = dataGenOptions ? new DataGenerator(dataGenOptions) : defaultDataGenerator;
   
+  // ホットリロード用の変換キャッシュ
+  const transformCache = new Map<string, { code: string; map?: string; timestamp: number }>();
+  
   return {
     name: 'kintone-bridge',
+    buildStart() {
+      // ビルド開始時にキャッシュをクリア
+      transformCache.clear();
+    },
     transform(code, id) {
       if (id.endsWith('.ts') || id.endsWith('.js')) {
         try {
+          // ホットリロード用の変更検出
+          const currentTimestamp = Date.now();
+          const cached = transformCache.get(id);
+          
+          if (cached && cached.timestamp > currentTimestamp - 1000) {
+            // 1秒以内の変更は変換をスキップ
+            return {
+              code: cached.code,
+              map: cached.map
+            };
+          }
+          
           const result = transformer.transform(code, {
             filename: id,
             target,
             sourceMap
+          });
+          
+          // 変換結果をキャッシュ
+          transformCache.set(id, {
+            code: result.code,
+            map: result.map,
+            timestamp: currentTimestamp
           });
           
           return {
@@ -44,6 +70,30 @@ export function kintoneBridge(options: KintoneBridgeOptions = {}): Plugin {
         }
       }
       return null;
+    },
+    handleHotUpdate(ctx) {
+      // ホットリロード時の処理
+      const { file, timestamp } = ctx;
+      
+      // 変換キャッシュから古いエントリを削除
+      if (transformCache.has(file)) {
+        transformCache.delete(file);
+      }
+      
+      // kintone関連ファイルの変更を検出
+      if (file.includes('kintone') || file.includes('ktn-bridge')) {
+        console.log(`[ktn-bridge] Hot reloading: ${file}`);
+        
+        // 関連ファイルのキャッシュもクリア
+        for (const [key] of transformCache) {
+          if (key.includes('kintone') || key.includes('ktn-bridge')) {
+            transformCache.delete(key);
+          }
+        }
+      }
+      
+      // デフォルトのホットリロード処理を続行
+      return undefined;
     },
     
     configureServer(server) {
