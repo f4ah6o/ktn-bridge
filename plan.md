@@ -328,6 +328,183 @@ ktn-bridgeの基本的な機能を実装し、playgroundでの動作確認を完
 - エラーハンドリングの改善
 - TypeScript型定義の自動生成
 
+## playground駆動開発スタイル
+
+### 開発フィロソフィー
+
+ktn-bridgeの開発は「playground駆動開発」というアプローチを採用しています。実際にplaygroundでコードを書きながら、必要な機能を段階的に実装していくスタイルです。
+
+### 開発サイクル
+
+```mermaid
+flowchart LR
+    A[playgroundで実装] --> B[動作確認]
+    B --> C[問題発見]
+    C --> D[ktn-bridge本体改善]
+    D --> E[playground更新]
+    E --> A
+    
+    style A fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    style D fill:#fff3e0,stroke:#e65100,stroke-width:2px
+```
+
+### 実践的な開発フロー
+
+#### 1. 新機能の実装フロー
+
+```bash
+# 1. playgroundで新しい機能を試す
+cd /Users/fu2hito/src/delOK/ktn-b-playground/sample-app
+code src/index.ts
+
+# 2. 開発サーバーを起動して動作確認
+pnpm dev
+
+# 3. 問題があればktn-bridge本体を修正
+cd /Users/fu2hito/src/ktn-bridge
+code packages/core/src/
+
+# 4. 修正をテストしてコミット
+pnpm build
+git add . && git commit -m "feat: 新機能の実装"
+```
+
+#### 2. 実際の開発スタイル例
+
+**シナリオ: 新しいイベントマッピングを追加したい場合**
+
+```typescript
+// playground/sample-app/src/index.ts
+// まずplaygroundで書いてみる
+document.addEventListener('beforeunload', (event) => {
+  // ページ離脱時の処理
+  event.preventDefault();
+  return 'データが保存されていません。本当に離脱しますか？';
+});
+```
+
+↓ 動作しない場合
+
+```typescript
+// packages/core/src/mappings/events.ts
+// ktn-bridge本体にマッピングを追加
+export const eventMappings = {
+  // ...
+  'app.record.edit.change': {
+    kintoneEvent: 'app.record.edit.change',
+    web: {
+      event: 'beforeunload',
+      description: 'フォーム離脱時の確認'
+    },
+    // ...
+  }
+};
+```
+
+#### 3. 実用的な開発パターン
+
+##### パターン1: 機能追加パターン
+```bash
+# playgroundで新機能を実装
+vim sample-app/src/features/new-feature.ts
+
+# 動作確認
+pnpm dev
+
+# 必要に応じてktn-bridge本体を拡張
+vim ../../ktn-bridge/packages/core/src/mappings/
+```
+
+##### パターン2: デバッグパターン
+```bash
+# エラーが発生した場合
+console.log('DEBUG: ktn-bridge変換前', originalCode);
+console.log('DEBUG: ktn-bridge変換後', transformedCode);
+
+# ソースマップを確認
+cat dist/customize.js.map
+```
+
+##### パターン3: 統合テストパターン
+```bash
+# 複数の機能を組み合わせてテスト
+# sample-app/src/integration-test.ts で実装
+# 実際のkintoneライクなワークフローを再現
+```
+
+### playground活用のメリット
+
+#### 1. 高速な試行錯誤
+- 理論よりも実際に動かしてみる
+- エラーを直接体験できる
+- 機能の必要性を実感できる
+
+#### 2. リアルな開発体験
+- 実際のkintone開発者が書くようなコードで検証
+- 本当に使いやすいAPIかどうか判断できる
+- ドキュメントでは分からない細かな問題を発見
+
+#### 3. 継続的な改善
+- playgroundのコードがそのまま使用例になる
+- 新機能のテストケースとして活用
+- 開発者体験の向上を測定できる
+
+### 推奨開発環境
+
+```bash
+# ターミナル1: ktn-bridge開発
+cd /Users/fu2hito/src/ktn-bridge
+pnpm dev  # ウォッチモード
+
+# ターミナル2: playground開発
+cd /Users/fu2hito/src/delOK/ktn-b-playground/sample-app
+pnpm dev  # 開発サーバー
+
+# ターミナル3: 汎用コマンド
+# git, test, build などの操作用
+```
+
+### 開発時の注意点
+
+#### 1. 依存関係の管理
+```bash
+# playgroundでの変更後は必ずktn-bridge本体をビルド
+cd /Users/fu2hito/src/ktn-bridge
+pnpm build
+
+# 変更が反映されない場合はキャッシュクリア
+rm -rf packages/*/dist
+pnpm build
+```
+
+#### 2. 変更の同期
+```bash
+# playground→ktn-bridge本体の変更をコミット
+git add packages/
+git commit -m "feat: playgroundで発見した問題を修正"
+
+# 定期的にplaygroundも更新
+cd /Users/fu2hito/src/delOK/ktn-b-playground
+git add . && git commit -m "update: 新機能のテストケース追加"
+```
+
+#### 3. ドキュメント化
+```typescript
+// playgroundで書いたコードを plan.md の使用例に追加
+// 実際に動作するコードをドキュメントとして蓄積
+```
+
+### 今後の展望
+
+この「playground駆動開発」スタイルにより、以下の利点が期待されます：
+
+- **実用性の高い機能**: 実際の開発で必要な機能を優先して実装
+- **高品質なDX**: 開発者体験を重視した設計
+- **継続的な改善**: 実際の使用を通じた継続的な機能改善
+- **充実したドキュメント**: 実動作するサンプルコードの蓄積
+
+これにより、ktn-bridgeは理論的な設計だけでなく、実際の開発現場で本当に使えるツールへと成長していきます。
+
 ## 実装フェーズ
 
 ### Phase 1: MVP（1-2週間）✅ 完了
