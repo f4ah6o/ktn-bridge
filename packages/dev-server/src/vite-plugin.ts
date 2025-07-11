@@ -1,14 +1,27 @@
 import type { Plugin } from 'vite';
 import { KintoneTransformer } from '@ktn-bridge/core';
+import { globalCache, DataCache } from './cache';
+import { defaultDataGenerator, DataGenerator } from './data-generator';
 
 export interface KintoneBridgeOptions {
   target?: 'development' | 'production';
   sourceMap?: boolean;
+  cache?: {
+    ttl?: number;
+    maxSize?: number;
+  };
+  dataGenerator?: {
+    recordCount?: number;
+    appId?: string;
+    locale?: string;
+  };
 }
 
 export function kintoneBridge(options: KintoneBridgeOptions = {}): Plugin {
-  const { target = 'development', sourceMap = true } = options;
+  const { target = 'development', sourceMap = true, cache: cacheOptions, dataGenerator: dataGenOptions } = options;
   const transformer = new KintoneTransformer();
+  const cache = cacheOptions ? new DataCache(cacheOptions) : globalCache;
+  const dataGenerator = dataGenOptions ? new DataGenerator(dataGenOptions) : defaultDataGenerator;
   
   return {
     name: 'kintone-bridge',
@@ -44,20 +57,59 @@ export function kintoneBridge(options: KintoneBridgeOptions = {}): Plugin {
           return;
         }
         
-        if (req.url?.startsWith('/api/records')) {
+        const url = new URL(req.url || '', `http://${req.headers.host}`);
+        const cacheKey = DataCache.generateKey(url.pathname, Object.fromEntries(url.searchParams));
+        
+        // キャッシュから確認
+        const cachedData = cache.get(cacheKey);
+        if (cachedData) {
           res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({
-            records: [
-              {
-                title: { type: 'SINGLE_LINE_TEXT', value: 'Sample Record 1' },
-                $id: { type: 'RECORD_NUMBER', value: '1' }
-              },
-              {
-                title: { type: 'SINGLE_LINE_TEXT', value: 'Sample Record 2' },
-                $id: { type: 'RECORD_NUMBER', value: '2' }
-              }
-            ]
-          }));
+          res.setHeader('X-Cache', 'HIT');
+          res.end(JSON.stringify(cachedData));
+          return;
+        }
+        
+        let responseData: any = null;
+        
+        if (req.url?.startsWith('/api/records')) {
+          responseData = dataGenerator.generateApiResponse('/k/v1/records', {
+            app: url.searchParams.get('app'),
+            query: url.searchParams.get('query'),
+            fields: url.searchParams.get('fields'),
+            totalCount: url.searchParams.get('totalCount')
+          });
+        } else if (req.url?.startsWith('/api/record')) {
+          const id = url.searchParams.get('id');
+          
+          if (req.method === 'GET') {
+            responseData = dataGenerator.generateApiResponse('/k/v1/record', {
+              app: url.searchParams.get('app'),
+              id: id ? parseInt(id, 10) : undefined
+            });
+          } else if (req.method === 'POST') {
+            responseData = dataGenerator.generateApiResponse('/k/v1/record/post', {
+              app: url.searchParams.get('app')
+            });
+          } else if (req.method === 'PUT') {
+            responseData = dataGenerator.generateApiResponse('/k/v1/record/put', {
+              app: url.searchParams.get('app'),
+              id: id ? parseInt(id, 10) : undefined
+            });
+          } else if (req.method === 'DELETE') {
+            responseData = dataGenerator.generateApiResponse('/k/v1/records/delete', {
+              app: url.searchParams.get('app'),
+              ids: url.searchParams.get('ids')
+            });
+          }
+        }
+        
+        if (responseData) {
+          // キャッシュに保存
+          cache.set(cacheKey, responseData, 60000); // 1分間キャッシュ
+          
+          res.setHeader('Content-Type', 'application/json');
+          res.setHeader('X-Cache', 'MISS');
+          res.end(JSON.stringify(responseData));
           return;
         }
         
